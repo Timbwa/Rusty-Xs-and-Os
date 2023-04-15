@@ -35,6 +35,7 @@ impl App {
             self.active_cell_coordinate = (active_row, c);
         }
     }
+
     pub fn down(&mut self) {
         let (r, c) = self.active_cell_coordinate;
         self.active_cell_coordinate = (r + usize::from(r < 3 - 1), c);
