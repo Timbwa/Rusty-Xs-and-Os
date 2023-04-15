@@ -1,4 +1,5 @@
 pub mod app;
+pub mod ui;
 
 use std::{
     io,
@@ -18,6 +19,7 @@ use tui::{
     widgets::{Block, Borders},
     Frame, Terminal,
 };
+use ui::Ui;
 
 /// Rusty Xs and Os client
 #[derive(Parser, Debug)]
@@ -37,7 +39,7 @@ pub fn run(cli: &mut Cli) -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let app = App::new();
+    let app = App::new(cli.developer_mode);
     let res = run_app(&mut terminal, app);
     // restore terminal
 
@@ -59,7 +61,10 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> Result<()> {
     let mut last_tick = Instant::now();
     let tick_rate = Duration::from_millis(200);
     loop {
-        terminal.draw(|f| ui(f, &mut app))?;
+        terminal.draw(|f| {
+            let ui = Ui;
+            ui.render_ui(&mut app, f);
+        })?;
 
         let timeout = tick_rate
             .checked_sub(last_tick.elapsed())
@@ -70,24 +75,13 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> Result<()> {
             if let Event::Key(key) = app_event {
                 if let KeyCode::Esc | KeyCode::Char('q') = key.code {
                     return Ok(());
+                } else {
+                    app.handle_key_event(&key);
                 }
             }
-            app.handle_key_event(&app_event);
         }
         if last_tick.elapsed() >= tick_rate {
             last_tick = Instant::now();
         }
     }
-}
-
-fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
-    let size = f.size();
-
-    // Surrounding Block
-    let block = Block::default()
-        .title(" Rusty Xs and Os ")
-        .borders(Borders::ALL)
-        .border_type(tui::widgets::BorderType::Rounded)
-        .title_alignment(tui::layout::Alignment::Center);
-    f.render_widget(block, size);
 }
