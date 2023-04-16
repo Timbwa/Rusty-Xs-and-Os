@@ -35,13 +35,13 @@ impl<'a> App<'a> {
                 KeyCode::Up => self.select_previous_menu_item(),
                 KeyCode::Char('t') => self.toggle_app_state(),
                 KeyCode::Enter => self.select_menu_item(),
-                _ => print!("Initial Menu No-Op"),
+                _ => {}
             },
             AppState::RunningGame(_active_coordinate) => match key_event.code {
                 KeyCode::Char('j') => print!("J-KEY-DOWN"),
                 KeyCode::Char('k') => print!("K-KEY-UP"),
                 KeyCode::Char('t') => self.toggle_app_state(),
-                _ => print!("Running Game No-Op"),
+                _ => {}
             },
         }
     }
