@@ -33,11 +33,11 @@ impl<'a> App<'a> {
     pub fn handle_key_event(&mut self, key_event: &KeyEvent) -> Option<AppAction> {
         match self.app_state {
             AppState::InitialMenu => match key_event.code {
-                KeyCode::Down => {
+                KeyCode::Down | KeyCode::Char('j') => {
                     self.select_next_menu_item();
                     return None;
                 }
-                KeyCode::Up => {
+                KeyCode::Up | KeyCode::Char('k') => {
                     self.select_previous_menu_item();
                     return None;
                 }
@@ -49,12 +49,24 @@ impl<'a> App<'a> {
                 _ => None,
             },
             AppState::RunningGame(_active_coordinate) => match key_event.code {
-                KeyCode::Char('j') => {
-                    print!("J-KEY-DOWN");
+                KeyCode::Down | KeyCode::Char('j') => {
+                    self.down();
                     return None;
                 }
-                KeyCode::Char('k') => {
-                    print!("K-KEY-UP");
+                KeyCode::Up | KeyCode::Char('k') => {
+                    self.up();
+                    return None;
+                }
+                KeyCode::Left | KeyCode::Char('h') => {
+                    self.left();
+                    return None;
+                }
+                KeyCode::Right | KeyCode::Char('l') => {
+                    self.right();
+                    return None;
+                }
+                KeyCode::Char('x') => {
+                    self.exit_game();
                     return None;
                 }
                 KeyCode::Char('t') => {
@@ -66,10 +78,44 @@ impl<'a> App<'a> {
         }
     }
 
+    fn up(&mut self) {
+        if let AppState::RunningGame(active_coordinate) = self.app_state {
+            let (r, c) = active_coordinate;
+            if let Some(active_row) = r.checked_sub(1) {
+                self.app_state = AppState::RunningGame((active_row, c));
+            }
+        }
+    }
+
+    fn down(&mut self) {
+        if let AppState::RunningGame(active_coordinate) = self.app_state {
+            let (r, c) = active_coordinate;
+            self.app_state = AppState::RunningGame((r + usize::from(r < 3 - 1), c));
+        }
+    }
+
+    fn left(&mut self) {
+        if let AppState::RunningGame(active_coordinate) = self.app_state {
+            let (r, c) = active_coordinate;
+            if let Some(active_column) = c.checked_sub(1) {
+                self.app_state = AppState::RunningGame((r, active_column));
+            }
+        }
+    }
+    fn right(&mut self) {
+        if let AppState::RunningGame(active_coordinate) = self.app_state {
+            let (r, c) = active_coordinate;
+            self.app_state = AppState::RunningGame((r, c + usize::from(c < 3 - 1)));
+        }
+    }
+
     fn select_menu_item(&mut self) -> Option<AppAction> {
         if let Some(index) = self.menu_state.selected() {
             match index {
-                0 => return None, // TODO: New Game
+                0 => {
+                    self.start_game();
+                    return None;
+                } // TODO: New Game
                 1 => return Some(AppAction::Exit),
                 _ => return None,
             }
@@ -108,13 +154,26 @@ impl<'a> App<'a> {
     }
 
     fn toggle_app_state(&mut self) {
-        match self.app_state {
-            AppState::InitialMenu => {
-                self.app_state = AppState::RunningGame((0, 0));
+        if self.is_developer_mode {
+            match self.app_state {
+                AppState::InitialMenu => {
+                    self.app_state = AppState::RunningGame((0, 0));
+                }
+                AppState::RunningGame(_active_coordinate) => {
+                    self.app_state = AppState::InitialMenu;
+                }
             }
-            AppState::RunningGame(_active_coordinate) => {
-                self.app_state = AppState::InitialMenu;
-            }
+        }
+    }
+
+    fn start_game(&mut self) {
+        if let AppState::InitialMenu = self.app_state {
+            self.app_state = AppState::RunningGame((0, 0));
+        }
+    }
+    fn exit_game(&mut self) {
+        if let AppState::RunningGame(_) = self.app_state {
+            self.app_state = AppState::InitialMenu;
         }
     }
 }

@@ -1,13 +1,75 @@
+use std::ops::Not;
+
 use tui::{
     backend::Backend,
     layout::{Alignment, Constraint, Layout, Rect},
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::Spans,
     widgets::{Block, Borders, Cell, Paragraph, Row, Table, Wrap},
     Frame,
 };
 
-use crate::app::{App, AppState};
+use crate::app::{App, AppState, Coordinate};
+
+struct GridCell<'a> {
+    coordinate: Coordinate,
+    app: &'a App<'a>,
+}
+
+impl<'a> GridCell<'a> {
+    fn create_cell_block(&self) -> Block<'a> {
+        Block::default()
+            .borders(self.determine_borders())
+            .border_type(tui::widgets::BorderType::Thick)
+            .style(Style::default().bg(if self.is_active() {
+                Color::Rgb(153, 20, 204)
+            } else {
+                Color::Reset
+            }))
+    }
+
+    fn determine_borders(&self) -> Borders {
+        match self.app.app_state {
+            AppState::InitialMenu => panic!("Invalid State"),
+            AppState::RunningGame(_) => {
+                let mut borders = Borders::NONE;
+                let (r, c) = self.coordinate;
+
+                if r == 0 {
+                    borders = borders.union(Borders::TOP).not();
+                }
+
+                if r == 2 {
+                    borders = borders.union(Borders::BOTTOM).not();
+                }
+
+                if c == 0 {
+                    borders = borders.difference(Borders::LEFT);
+                }
+
+                if c == 2 {
+                    borders = borders.difference(Borders::RIGHT);
+                }
+
+                if c > 0 && c < 2 {
+                    borders = borders.union(Borders::RIGHT);
+                    borders = borders.union(Borders::LEFT);
+                }
+
+                borders
+            }
+        }
+    }
+
+    fn is_active(&self) -> bool {
+        match self.app.app_state {
+            AppState::InitialMenu => false,
+            AppState::RunningGame(active_cell_coordinate) => {
+                return active_cell_coordinate == self.coordinate;
+            }
+        }
+    }
+}
 
 pub struct Ui;
 
@@ -42,7 +104,7 @@ impl Ui {
 
         match app.app_state {
             AppState::InitialMenu => self.render_menu(app, frame, chunks[1]),
-            AppState::RunningGame(_) => self.render_game(app, frame),
+            AppState::RunningGame(_) => self.render_game(app, frame, chunks[1]),
         }
 
         // footer
@@ -99,9 +161,17 @@ impl Ui {
         let author_description = Paragraph::new(author_description)
             .alignment(Alignment::Left)
             .wrap(Wrap { trim: true });
+        let quit_game_description = vec![Spans::from("x: Exit game")];
+
+        let quit_game_description = Paragraph::new(quit_game_description)
+            .alignment(Alignment::Left)
+            .wrap(Wrap { trim: true });
 
         if let AppState::InitialMenu = app.app_state {
             frame.render_widget(author_description, row_chunks[0]);
+        }
+        if let AppState::RunningGame(_) = app.app_state {
+            frame.render_widget(quit_game_description, row_chunks[0]);
         }
 
         let instructions = vec![Spans::from("←↑↓→/hjkl to navigate")];
@@ -116,10 +186,42 @@ impl Ui {
             .alignment(Alignment::Center)
             .wrap(Wrap { trim: true });
 
-        if let AppState::InitialMenu = app.app_state {
-            frame.render_widget(select_instruction, row_chunks[2]);
-        }
+        frame.render_widget(select_instruction, row_chunks[2]);
     }
 
-    fn render_game<B: Backend>(&self, _app: &mut App, _frame: &mut Frame<B>) {}
+    fn render_game<B: Backend>(&self, app: &mut App, frame: &mut Frame<B>, layout_area: Rect) {
+        let cell_constraints = [
+            Constraint::Ratio(1, 3),
+            Constraint::Ratio(1, 3),
+            Constraint::Ratio(1, 3),
+        ];
+
+        let row_rects = Layout::default()
+            .direction(tui::layout::Direction::Vertical)
+            .margin(1)
+            .constraints(cell_constraints)
+            .split(layout_area);
+
+        for (r, row_rect) in row_rects.into_iter().enumerate() {
+            let col_rects = Layout::default()
+                .direction(tui::layout::Direction::Horizontal)
+                .horizontal_margin(0)
+                .constraints(cell_constraints)
+                .split(row_rect);
+
+            for (c, col_rect) in col_rects.into_iter().enumerate() {
+                let text = format!("({c:?},{r:?})");
+                let grid_cell = GridCell {
+                    coordinate: (r, c),
+                    app,
+                };
+
+                let cell_text = Paragraph::new(text)
+                    .block(grid_cell.create_cell_block())
+                    .alignment(tui::layout::Alignment::Center);
+
+                frame.render_widget(cell_text, col_rect);
+            }
+        }
+    }
 }
