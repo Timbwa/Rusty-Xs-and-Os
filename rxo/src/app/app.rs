@@ -1,5 +1,3 @@
-use std::process::exit;
-
 use crossterm::event::{KeyCode, KeyEvent};
 use tui::widgets::TableState;
 
@@ -8,6 +6,10 @@ pub type Coordinate = (usize, usize);
 pub enum AppState {
     InitialMenu,
     RunningGame(Coordinate),
+}
+
+pub enum AppAction {
+    Exit,
 }
 
 pub struct App<'a> {
@@ -28,32 +30,51 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn handle_key_event(&mut self, key_event: &KeyEvent) {
+    pub fn handle_key_event(&mut self, key_event: &KeyEvent) -> Option<AppAction> {
         match self.app_state {
             AppState::InitialMenu => match key_event.code {
-                KeyCode::Down => self.select_next_menu_item(),
-                KeyCode::Up => self.select_previous_menu_item(),
-                KeyCode::Char('t') => self.toggle_app_state(),
+                KeyCode::Down => {
+                    self.select_next_menu_item();
+                    return None;
+                }
+                KeyCode::Up => {
+                    self.select_previous_menu_item();
+                    return None;
+                }
+                KeyCode::Char('t') => {
+                    self.toggle_app_state();
+                    return None;
+                }
                 KeyCode::Enter => self.select_menu_item(),
-                _ => {}
+                _ => None,
             },
             AppState::RunningGame(_active_coordinate) => match key_event.code {
-                KeyCode::Char('j') => print!("J-KEY-DOWN"),
-                KeyCode::Char('k') => print!("K-KEY-UP"),
-                KeyCode::Char('t') => self.toggle_app_state(),
-                _ => {}
+                KeyCode::Char('j') => {
+                    print!("J-KEY-DOWN");
+                    return None;
+                }
+                KeyCode::Char('k') => {
+                    print!("K-KEY-UP");
+                    return None;
+                }
+                KeyCode::Char('t') => {
+                    self.toggle_app_state();
+                    return None;
+                }
+                _ => None,
             },
         }
     }
 
-    fn select_menu_item(&mut self) {
+    fn select_menu_item(&mut self) -> Option<AppAction> {
         if let Some(index) = self.menu_state.selected() {
             match index {
-                0 => {} // TODO: New Game
-                1 => exit(0),
-                _ => {}
+                0 => return None, // TODO: New Game
+                1 => return Some(AppAction::Exit),
+                _ => return None,
             }
         }
+        None
     }
 
     fn select_next_menu_item(&mut self) {

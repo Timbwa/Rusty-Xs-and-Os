@@ -16,8 +16,7 @@ use crossterm::{
 };
 use tui::{
     backend::{Backend, CrosstermBackend},
-    widgets::{Block, Borders},
-    Frame, Terminal,
+    Terminal,
 };
 use ui::Ui;
 
@@ -76,7 +75,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> Result<()> {
                 if let KeyCode::Esc | KeyCode::Char('q') = key.code {
                     return Ok(());
                 } else {
-                    app.handle_key_event(&key);
+                    if let Some(app_action) = app.handle_key_event(&key) {
+                        match app_action {
+                            app::AppAction::Exit => return Ok(()),
+                        }
+                    }
                 }
             }
         }
